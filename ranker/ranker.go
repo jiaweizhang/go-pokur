@@ -185,9 +185,6 @@ func score7(cards [7]Card) (bestCards [5]Card, max int) {
 	copy(currentCards[:], []Card{cards[2], cards[3], cards[4], cards[5], cards[6]})
 	doScore(currentCards)
 
-	printRank(max)
-	fmt.Println(bestCards)
-	fmt.Println()
 	return
 }
 
@@ -203,12 +200,20 @@ func score5(c [5]Card) int {
 
 	if isStraight && isFlush {
 		// royal flush
-		return 9<<20 + c[0].Rank<<16
+		if c[0].Rank != 12 || c[1].Rank != 3 {
+			return 9<<20 + c[0].Rank<<16
+		}
+		// 5 high straight flush
+		return 9 << 20 + 3 << 16
 	}
 
 	if isStraight {
 		// straight
-		return 5<<20 + c[0].Rank<<16
+		if c[0].Rank != 12 || c[1].Rank != 3 {
+			return 5<<20 + c[0].Rank<<16
+		}
+		// 5 high straight
+		return 5 << 20 + 3 << 16
 	}
 
 	if isFlush {
