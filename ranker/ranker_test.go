@@ -286,5 +286,5 @@ func startTime() {
 }
 
 func lap() time.Duration {
-	return time.Now().Sub(t)
+	return time.Since(t)
 }

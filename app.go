@@ -1,9 +1,19 @@
 package main
 
 import "fmt"
-import "github.com/jiaweizhang/goker/ranker"
+import (
+	//"github.com/jiaweizhang/goker/ranker"
+	"flag"
+	"github.com/jiaweizhang/goker/data"
+	"github.com/jiaweizhang/goker/ranker"
+	"github.com/jiaweizhang/goker/server"
+	"log"
+	"net/http"
+	"os"
+)
 
 func main() {
+	fsdir := flag.String("fsdir", "", "Static file directory to serve")
 	fmt.Println("Goker app")
 
 	aa := ranker.Hand{1, []ranker.Card{ranker.Card{12, 'H'}, ranker.Card{12, 'S'}}}
@@ -19,7 +29,23 @@ func main() {
 		ranker.Card{1, 'H'},
 	}
 
-	result, err := ranker.ProcessShowdown(community, aa, kk, qq, aa2)
+	ranker.ProcessShowdown(community, aa, kk, qq, aa2)
 
-	fmt.Println(result, err)
+	log.SetOutput(os.Stdout)
+
+	flag.Parse()
+
+	// serve if dir is provided
+	if *fsdir != "" {
+		log.Printf("Starting fileserver at %s", *fsdir)
+		fs := http.FileServer(http.Dir(*fsdir))
+		http.Handle("/", fs)
+	}
+
+	data.Init()
+	server.Init()
+
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		log.Printf("ListenAndServe error: %v", err)
+	}
 }

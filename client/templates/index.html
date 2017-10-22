@@ -1,0 +1,57 @@
+<html>
+<head></head>
+<body>
+<script type="text/javascript">
+    var sock = null;
+    var wsuri = "ws://localhost:8080/table/a";
+
+    window.onload = function () {
+
+        console.log("onload");
+
+        sock = new WebSocket(wsuri);
+
+        sock.onopen = function () {
+            console.log("connected to " + wsuri);
+        }
+
+        sock.onclose = function (e) {
+            console.log("connection closed (" + e.code + ")");
+        }
+
+        sock.onmessage = function (e) {
+            console.log("message received: " + e.data);
+        }
+    };
+
+    function init() {
+        var js = {
+            player: document.getElementById('player').value,
+            mType: "new",
+            msg: ""
+        }
+        sock.send(JSON.stringify(js))
+    }
+
+    function send() {
+        var js = {
+            player: document.getElementById('player').value,
+            mType: "msg",
+            msg: document.getElementById("msg").value
+        }
+        sock.send(JSON.stringify(js));
+    };
+</script>
+<h1>Goker</h1>
+<form>
+    <p>
+        Player: <input id="player" type="text">
+    </p>
+    <p>
+        Message: <input id="msg" type="text">
+    </p>
+</form>
+<button onclick="send();">Send Message</button>
+<button onclick="init();">Initialize</button>
+</body>
+</html>
