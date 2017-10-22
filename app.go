@@ -19,7 +19,7 @@ func main() {
 		ranker.Card{1, 'H'},
 	}
 
-	result := ranker.ProcessShowdown(community, aa, kk, qq, aa2)
+	result, err := ranker.ProcessShowdown(community, aa, kk, qq, aa2)
 
-	fmt.Println(result)
+	fmt.Println(result, err)
 }

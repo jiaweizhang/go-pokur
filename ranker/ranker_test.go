@@ -256,6 +256,29 @@ func generateCard(card string) Card {
 	return Card{rank, runified[1]}
 }
 
+func printRank(ranking int) {
+	switch ranking >> 20 {
+	case 9:
+		fmt.Println("Straight flush")
+	case 8:
+		fmt.Println("Four of a kind")
+	case 7:
+		fmt.Println("Full house")
+	case 6:
+		fmt.Println("Flush")
+	case 5:
+		fmt.Println("Straight")
+	case 4:
+		fmt.Println("Three of a kind")
+	case 3:
+		fmt.Println("Two pair")
+	case 2:
+		fmt.Println("Pair")
+	case 1:
+		fmt.Println("High card")
+	}
+}
+
 var t time.Time
 
 func startTime() {

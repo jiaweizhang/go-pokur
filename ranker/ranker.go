@@ -33,11 +33,9 @@ type chanItem struct {
 	owner    int64
 }
 
-func ProcessShowdown(community []Card, hands ...Hand) [][]RankingResult {
-	if len(hands) < 2 {
-		fmt.Println("Must have at least 2 players")
-	} else if len(hands) > 9 {
-		fmt.Println("Only support up to 9 players")
+func ProcessShowdown(community []Card, hands ...Hand) ([][]RankingResult, error) {
+	if err := verifyShowdownArguments(community, hands...); err != nil {
+		return nil, err
 	}
 
 	internalScores := make([]internalHand, 0, 9)
@@ -77,8 +75,6 @@ func ProcessShowdown(community []Card, hands ...Hand) [][]RankingResult {
 	tiedForBest = append(tiedForBest, RankingResult{internalScores[0].owner, internalScores[0].bestHand})
 
 	for i := 1; i < len(hands); i++ {
-		fmt.Println(internalScores)
-		fmt.Println(i)
 		if internalScores[i].ranking != currentRanking {
 			// if we have reached a new Rank, copy the current slice into the 2D slice and create a new slice
 			ordering = append(ordering, tiedForBest)
@@ -90,7 +86,7 @@ func ProcessShowdown(community []Card, hands ...Hand) [][]RankingResult {
 
 	// add last array in
 	ordering = append(ordering, tiedForBest)
-	return ordering
+	return ordering, nil
 }
 
 func score7Chan(c chan chanItem, owner int64, cards []Card) {
@@ -353,25 +349,52 @@ func score5(c []Card) int {
 	return 7<<20 + c[2].Rank<<16 + c[0].Rank<<12
 }
 
-func printRank(ranking int) {
-	switch ranking >> 20 {
-	case 9:
-		fmt.Println("Straight flush")
-	case 8:
-		fmt.Println("Four of a kind")
-	case 7:
-		fmt.Println("Full house")
-	case 6:
-		fmt.Println("Flush")
-	case 5:
-		fmt.Println("Straight")
-	case 4:
-		fmt.Println("Three of a kind")
-	case 3:
-		fmt.Println("Two pair")
-	case 2:
-		fmt.Println("Pair")
-	case 1:
-		fmt.Println("High card")
+func verifyShowdownArguments(community []Card, hands ...Hand) error {
+	if len(hands) < 2 {
+		return fmt.Errorf("must have at least 2 players")
+	} else if len(hands) > 9 {
+		return fmt.Errorf("only support up to 9 players")
 	}
+
+	if len(community) != 5 {
+		return fmt.Errorf("must have 5 community cards")
+	}
+
+	// TODO(jiaweizhang) Ensure that owners are unique
+
+	// ensure there are no duplicate cards among community cards
+	var mask int64
+	for _, c := range community {
+		if shift, err := CalculateBit(c); err != nil {
+			return err
+		} else if nshift := int64(1) << uint(shift); mask&nshift != 0 {
+			return fmt.Errorf("duplicate community card %v", c)
+		} else {
+			mask += nshift
+		}
+	}
+
+	// ensure there are no duplicate cards among hands
+	for _, h := range hands {
+		if len(h.Cards) != 2 {
+			return fmt.Errorf("hands must have 2 cards each %v", h)
+		}
+		if shift, err := CalculateBit(h.Cards[0]); err != nil {
+			return err
+		} else if nshift := int64(1) << uint(shift); mask&nshift != 0 {
+			return fmt.Errorf("duplicate card %v for owner %v", h.Cards[0], h.Owner)
+		} else {
+			mask += nshift
+		}
+
+		if shift, err := CalculateBit(h.Cards[1]); err != nil {
+			return err
+		} else if nshift := int64(1) << uint(shift); mask&nshift != 0 {
+			return fmt.Errorf("duplicate card %v for owner %v", h.Cards[1], h.Owner)
+		} else {
+			mask += nshift
+		}
+	}
+
+	return nil
 }
