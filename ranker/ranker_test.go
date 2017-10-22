@@ -3,11 +3,12 @@ package ranker
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
 var customTests = []struct {
-	cards    [7]Card // input
-	expected int     // expected result
+	cards    []Card // input
+	expected int    // expected result
 }{
 	// SF Ace High
 	{g7("AS", "KS", "QS", "JS", "TS", "4S", "7H"), 9<<20 + 12<<16},
@@ -150,15 +151,17 @@ var customTests = []struct {
 }
 
 func TestCustom(t *testing.T) {
+	startTime()
 	for _, tt := range customTests {
 		_, actual := score7(tt.cards)
 		if actual != tt.expected {
 			t.Errorf("Cards: %s, expected %s, actual %s", formatCards(tt.cards), formatRank(tt.expected), formatRank(actual))
 		}
 	}
+	fmt.Println("Time taken:", lap())
 }
 
-func formatCards(cards [7]Card) string {
+func formatCards(cards []Card) string {
 	return formatCard(cards[0]) + " " + formatCard(cards[1]) + " " + formatCard(cards[2]) + " " + formatCard(cards[3]) + " " +
 		formatCard(cards[4]) + " " + formatCard(cards[5]) + " " + formatCard(cards[6])
 }
@@ -201,8 +204,8 @@ func formatRank(rank int) string {
 	return fmt.Sprintf("%2d %2d %2d %2d %2d %2d", rank>>20, rank>>16&15, rank>>12&15, rank>>8&15, rank>>4&15, rank&15)
 }
 
-func generate7Cards(a, b, c, d, e, f, g string) [7]Card {
-	return [7]Card{
+func generate7Cards(a, b, c, d, e, f, g string) []Card {
+	return []Card{
 		generateCard(a),
 		generateCard(b),
 		generateCard(c),
@@ -213,7 +216,7 @@ func generate7Cards(a, b, c, d, e, f, g string) [7]Card {
 	}
 }
 
-func g7(a, b, c, d, e, f, g string) [7]Card {
+func g7(a, b, c, d, e, f, g string) []Card {
 	return generate7Cards(a, b, c, d, e, f, g)
 }
 
@@ -251,4 +254,14 @@ func generateCard(card string) Card {
 	}
 
 	return Card{rank, runified[1]}
+}
+
+var t time.Time
+
+func startTime() {
+	t = time.Now()
+}
+
+func lap() time.Duration {
+	return time.Now().Sub(t)
 }

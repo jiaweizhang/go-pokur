@@ -10,21 +10,21 @@ type Card struct {
 
 type Hand struct {
 	Owner int64
-	Cards [2]Card
+	Cards []Card
 }
 
 type internalHand struct {
 	owner    int64
-	bestHand [5]Card
+	bestHand []Card
 	ranking  int
 }
 
 type RankingResult struct {
 	Owner    int64
-	BestHand [5]Card
+	BestHand []Card
 }
 
-func ProcessShowdown(community [5]Card, hands ...Hand) [][]RankingResult {
+func ProcessShowdown(community []Card, hands ...Hand) [][]RankingResult {
 	if len(hands) < 2 {
 		fmt.Println("Must have at least 2 players")
 	} else if len(hands) > 9 {
@@ -35,7 +35,7 @@ func ProcessShowdown(community [5]Card, hands ...Hand) [][]RankingResult {
 
 	for _, hand := range hands {
 		// find the score for the Hand
-		sevenCards := [7]Card{community[0], community[1], community[2], community[3], community[4], hand.Cards[0], hand.Cards[1]}
+		sevenCards := []Card{community[0], community[1], community[2], community[3], community[4], hand.Cards[0], hand.Cards[1]}
 		bestHand, score := score7(sevenCards)
 		internalScores = append(internalScores, internalHand{hand.Owner, bestHand, score})
 	}
@@ -89,11 +89,11 @@ func printRank(ranking int) {
 	}
 }
 
-func score7(cards [7]Card) (bestCards [5]Card, max int) {
+func score7(cards []Card) (bestCards []Card, max int) {
 	max = 0
-	currentCards := [5]Card{}
+	currentCards := make([]Card, 5, 5)
 
-	doScore := func(fiveCards [5]Card) {
+	doScore := func(fiveCards []Card) {
 		score := score5(fiveCards)
 		if score > max {
 			max = score
@@ -188,7 +188,7 @@ func score7(cards [7]Card) (bestCards [5]Card, max int) {
 	return
 }
 
-func score5(c [5]Card) int {
+func score5(c []Card) int {
 	// sort by Rank
 	sort.Slice(c[:], func(i, j int) bool {
 		return c[i].Rank > c[j].Rank
@@ -204,7 +204,7 @@ func score5(c [5]Card) int {
 			return 9<<20 + c[0].Rank<<16
 		}
 		// 5 high straight flush
-		return 9 << 20 + 3 << 16
+		return 9<<20 + 3<<16
 	}
 
 	if isStraight {
@@ -213,7 +213,7 @@ func score5(c [5]Card) int {
 			return 5<<20 + c[0].Rank<<16
 		}
 		// 5 high straight
-		return 5 << 20 + 3 << 16
+		return 5<<20 + 3<<16
 	}
 
 	if isFlush {
