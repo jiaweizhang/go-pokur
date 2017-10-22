@@ -24,6 +24,12 @@ type RankingResult struct {
 	BestHand []Card
 }
 
+type chanItem struct {
+	score    int
+	bestHand []Card
+	owner    int64
+}
+
 func ProcessShowdown(community []Card, hands ...Hand) [][]RankingResult {
 	if len(hands) < 2 {
 		fmt.Println("Must have at least 2 players")
@@ -33,12 +39,30 @@ func ProcessShowdown(community []Card, hands ...Hand) [][]RankingResult {
 
 	internalScores := make([]internalHand, 0, 9)
 
+	c := make(chan chanItem)
+	e := make(chan bool)
+
 	for _, hand := range hands {
 		// find the score for the Hand
 		sevenCards := []Card{community[0], community[1], community[2], community[3], community[4], hand.Cards[0], hand.Cards[1]}
-		bestHand, score := score7(sevenCards)
-		internalScores = append(internalScores, internalHand{hand.Owner, bestHand, score})
+		go score7Chan(c, hand.Owner, sevenCards)
 	}
+
+	go func() {
+		count := 0
+		for ci := range c {
+			internalScores = append(internalScores, internalHand{ci.owner, ci.bestHand, ci.score})
+			count++
+			if count == len(hands) {
+				e <- true
+				close(c)
+			}
+		}
+	}()
+
+	<-e
+
+	close(e)
 
 	sort.Slice(internalScores, func(i, j int) bool {
 		return internalScores[i].ranking > internalScores[j].ranking
@@ -52,6 +76,8 @@ func ProcessShowdown(community []Card, hands ...Hand) [][]RankingResult {
 	tiedForBest = append(tiedForBest, RankingResult{internalScores[0].owner, internalScores[0].bestHand})
 
 	for i := 1; i < len(hands); i++ {
+		fmt.Println(internalScores)
+		fmt.Println(i)
 		if internalScores[i].ranking != currentRanking {
 			// if we have reached a new Rank, copy the current slice into the 2D slice and create a new slice
 			ordering = append(ordering, tiedForBest)
@@ -89,9 +115,14 @@ func printRank(ranking int) {
 	}
 }
 
-func score7(cards []Card) (bestCards []Card, max int) {
-	max = 0
-	currentCards := make([]Card, 5, 5)
+func score7Chan(c chan chanItem, owner int64, cards []Card) {
+	bestCards, max := score7(cards)
+	c <- chanItem{max, bestCards, owner}
+}
+
+func score7(cards []Card) ([]Card, int) {
+	max := 0
+	bestCards := make([]Card, 5, 5)
 
 	doScore := func(fiveCards []Card) {
 		score := score5(fiveCards)
@@ -102,90 +133,69 @@ func score7(cards []Card) (bestCards []Card, max int) {
 	}
 
 	// 1 1 1 1 1 0 0
-	copy(currentCards[:], []Card{cards[0], cards[1], cards[2], cards[3], cards[4]})
-	doScore(currentCards)
+	doScore([]Card{cards[0], cards[1], cards[2], cards[3], cards[4]})
 
 	// 1 1 1 1 0 1 0
-	copy(currentCards[:], []Card{cards[0], cards[1], cards[2], cards[3], cards[5]})
-	doScore(currentCards)
+	doScore([]Card{cards[0], cards[1], cards[2], cards[3], cards[5]})
 
 	// 1 1 1 1 0 0 1
-	copy(currentCards[:], []Card{cards[0], cards[1], cards[2], cards[3], cards[6]})
-	doScore(currentCards)
+	doScore([]Card{cards[0], cards[1], cards[2], cards[3], cards[6]})
 
 	// 1 1 1 0 1 1 0
-	copy(currentCards[:], []Card{cards[0], cards[1], cards[2], cards[4], cards[5]})
-	doScore(currentCards)
+	doScore([]Card{cards[0], cards[1], cards[2], cards[4], cards[5]})
 
 	// 1 1 1 0 1 0 1
-	copy(currentCards[:], []Card{cards[0], cards[1], cards[2], cards[4], cards[6]})
-	doScore(currentCards)
+	doScore([]Card{cards[0], cards[1], cards[2], cards[4], cards[6]})
 
 	// 1 1 1 0 0 1 1
-	copy(currentCards[:], []Card{cards[0], cards[1], cards[2], cards[5], cards[6]})
-	doScore(currentCards)
+	doScore([]Card{cards[0], cards[1], cards[2], cards[5], cards[6]})
 
 	// 1 1 0 1 1 1 0
-	copy(currentCards[:], []Card{cards[0], cards[1], cards[3], cards[4], cards[5]})
-	doScore(currentCards)
+	doScore([]Card{cards[0], cards[1], cards[3], cards[4], cards[5]})
 
 	// 1 1 0 1 1 0 1
-	copy(currentCards[:], []Card{cards[0], cards[1], cards[3], cards[4], cards[6]})
-	doScore(currentCards)
+	doScore([]Card{cards[0], cards[1], cards[3], cards[4], cards[6]})
 
 	// 1 1 0 1 0 1 1
-	copy(currentCards[:], []Card{cards[0], cards[1], cards[3], cards[5], cards[6]})
-	doScore(currentCards)
+	doScore([]Card{cards[0], cards[1], cards[3], cards[5], cards[6]})
 
 	// 1 1 0 0 1 1 1
-	copy(currentCards[:], []Card{cards[0], cards[1], cards[4], cards[5], cards[6]})
-	doScore(currentCards)
+	doScore([]Card{cards[0], cards[1], cards[4], cards[5], cards[6]})
 
 	// 1 0 1 1 1 1 0
-	copy(currentCards[:], []Card{cards[0], cards[2], cards[3], cards[4], cards[5]})
-	doScore(currentCards)
+	doScore([]Card{cards[0], cards[2], cards[3], cards[4], cards[5]})
 
 	// 1 0 1 1 1 0 1
-	copy(currentCards[:], []Card{cards[0], cards[2], cards[3], cards[4], cards[6]})
-	doScore(currentCards)
+	doScore([]Card{cards[0], cards[2], cards[3], cards[4], cards[6]})
 
 	// 1 0 1 1 0 1 1
-	copy(currentCards[:], []Card{cards[0], cards[2], cards[3], cards[5], cards[6]})
-	doScore(currentCards)
+	doScore([]Card{cards[0], cards[2], cards[3], cards[5], cards[6]})
 
 	// 1 0 1 0 1 1 1
-	copy(currentCards[:], []Card{cards[0], cards[2], cards[4], cards[5], cards[6]})
-	doScore(currentCards)
+	doScore([]Card{cards[0], cards[2], cards[4], cards[5], cards[6]})
 
 	// 1 0 0 1 1 1 1
-	copy(currentCards[:], []Card{cards[0], cards[3], cards[4], cards[5], cards[6]})
-	doScore(currentCards)
+	doScore([]Card{cards[0], cards[3], cards[4], cards[5], cards[6]})
 
 	// 0 1 1 1 1 1 0
-	copy(currentCards[:], []Card{cards[1], cards[2], cards[3], cards[4], cards[5]})
-	doScore(currentCards)
+	doScore([]Card{cards[1], cards[2], cards[3], cards[4], cards[5]})
 
 	// 0 1 1 1 1 0 1
-	copy(currentCards[:], []Card{cards[1], cards[2], cards[3], cards[4], cards[6]})
-	doScore(currentCards)
+	doScore([]Card{cards[1], cards[2], cards[3], cards[4], cards[6]})
 
 	// 0 1 1 1 0 1 1
-	copy(currentCards[:], []Card{cards[1], cards[2], cards[3], cards[5], cards[6]})
-	doScore(currentCards)
+	doScore([]Card{cards[1], cards[2], cards[3], cards[5], cards[6]})
 
 	// 0 1 1 0 1 1 1
-	copy(currentCards[:], []Card{cards[1], cards[2], cards[4], cards[5], cards[6]})
-	doScore(currentCards)
+	doScore([]Card{cards[1], cards[2], cards[4], cards[5], cards[6]})
 
 	// 0 1 0 1 1 1 1
-	copy(currentCards[:], []Card{cards[1], cards[3], cards[4], cards[5], cards[6]})
-	doScore(currentCards)
+	doScore([]Card{cards[1], cards[3], cards[4], cards[5], cards[6]})
 
 	// 0 0 1 1 1 1 1
-	copy(currentCards[:], []Card{cards[2], cards[3], cards[4], cards[5], cards[6]})
-	doScore(currentCards)
+	doScore([]Card{cards[2], cards[3], cards[4], cards[5], cards[6]})
 
-	return
+	return bestCards, max
 }
 
 func score5(c []Card) int {
