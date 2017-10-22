@@ -1,7 +1,10 @@
 package ranker
 
 import "fmt"
-import "sort"
+import (
+	"sort"
+	"sync"
+)
 
 type Card struct {
 	Rank int
@@ -39,8 +42,12 @@ func ProcessShowdown(community []Card, hands ...Hand) [][]RankingResult {
 
 	internalScores := make([]internalHand, 0, 9)
 
+	// channel for processed player hand and community cards
 	c := make(chan chanItem)
-	e := make(chan bool)
+
+	// used to ensure all hands are finished processing before continuing
+	var wg sync.WaitGroup
+	wg.Add(len(hands))
 
 	for _, hand := range hands {
 		// find the score for the Hand
@@ -49,20 +56,14 @@ func ProcessShowdown(community []Card, hands ...Hand) [][]RankingResult {
 	}
 
 	go func() {
-		count := 0
 		for ci := range c {
 			internalScores = append(internalScores, internalHand{ci.owner, ci.bestHand, ci.score})
-			count++
-			if count == len(hands) {
-				e <- true
-				close(c)
-			}
+			wg.Done()
 		}
 	}()
 
-	<-e
-
-	close(e)
+	wg.Wait()
+	close(c)
 
 	sort.Slice(internalScores, func(i, j int) bool {
 		return internalScores[i].ranking > internalScores[j].ranking
@@ -90,29 +91,6 @@ func ProcessShowdown(community []Card, hands ...Hand) [][]RankingResult {
 	// add last array in
 	ordering = append(ordering, tiedForBest)
 	return ordering
-}
-
-func printRank(ranking int) {
-	switch ranking >> 20 {
-	case 9:
-		fmt.Println("Straight flush")
-	case 8:
-		fmt.Println("Four of a kind")
-	case 7:
-		fmt.Println("Full house")
-	case 6:
-		fmt.Println("Flush")
-	case 5:
-		fmt.Println("Straight")
-	case 4:
-		fmt.Println("Three of a kind")
-	case 3:
-		fmt.Println("Two pair")
-	case 2:
-		fmt.Println("Pair")
-	case 1:
-		fmt.Println("High card")
-	}
 }
 
 func score7Chan(c chan chanItem, owner int64, cards []Card) {
@@ -373,4 +351,27 @@ func score5(c []Card) int {
 	// 2 3
 	// full house
 	return 7<<20 + c[2].Rank<<16 + c[0].Rank<<12
+}
+
+func printRank(ranking int) {
+	switch ranking >> 20 {
+	case 9:
+		fmt.Println("Straight flush")
+	case 8:
+		fmt.Println("Four of a kind")
+	case 7:
+		fmt.Println("Full house")
+	case 6:
+		fmt.Println("Flush")
+	case 5:
+		fmt.Println("Straight")
+	case 4:
+		fmt.Println("Three of a kind")
+	case 3:
+		fmt.Println("Two pair")
+	case 2:
+		fmt.Println("Pair")
+	case 1:
+		fmt.Println("High card")
+	}
 }
